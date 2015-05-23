@@ -5,11 +5,10 @@ Build:<br />
 setup correct environment before compiling.
 [see here](https://tkkrlab.nl/wiki/Aan_de_slag_met_Beck-board)
 
-<code>
-wmake dmxin.exe
-
-wmake dmxout.exe
-</code>
+```
+wmake dmxin.exe   
+wmake dmxout.exe  
+```
 
 Clean:<br />
 <code>wmake clean</code>
