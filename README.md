@@ -10,5 +10,7 @@ wmake dmxin.exe
 wmake dmxout.exe  
 ```
 
-Clean:<br />
-<code>wmake clean</code>
+Clean
+```
+wmake clean
+```
