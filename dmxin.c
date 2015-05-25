@@ -79,10 +79,14 @@ void print_dmx(int size)
 unsigned char artnet[600] = "Art-Net\x00\x00\x50\x00\x0e\x00\x00\x00\x00\x00";
 #define DATA_OFFSET 18
 
+unsigned char *dmxsize = artnet + DATA_OFFSET - 2;
 unsigned char *dmxdata = artnet + DATA_OFFSET;
-// skip byte containing 0x00 with frame error en DMX type byte 0x00
-unsigned char *dmxdata2 = artnet + DATA_OFFSET - 2;
 
+// OFFS=2: skip byte containing 0x00 with frame error and DMX type byte 0x00
+// OFFS=1: skip byte DMX type byte 0x00
+#define OFFS 1
+unsigned char *dmxudp = artnet + DATA_OFFSET - OFFS;
+//#define DIAG
 
 int loop1(int argc, char *argv[])
 {
@@ -118,7 +122,7 @@ int loop1(int argc, char *argv[])
 		while (1)
 		{
 			status1 = fossil_status_request(port);
-			count = fossil_readblock(port, dmxdata2, 512);
+			count = fossil_readblock(port, dmxudp, 512);
 			status2 = fossil_status_request(port);
 			if ((status1 & FOSSIL_LINE_BREAK) && !(status2 & (FOSSIL_LINE_BREAK | FOSSIL_FRAMING_ERROR)))
 			{
@@ -126,22 +130,28 @@ int loop1(int argc, char *argv[])
 				{
 					do
 					{
-						count += fossil_readblock(port, dmxdata2 + count, 512 - count);
+						count += fossil_readblock(port, dmxudp + count, 512 - count);
 						status4 = fossil_status_request(port);
-					} while (status4 & FOSSIL_DATA_AVAILABLE && !(status4 & (FOSSIL_LINE_BREAK | FOSSIL_FRAMING_ERROR)));
+					} while ((status4 & FOSSIL_DATA_AVAILABLE) && !(status4 & (FOSSIL_LINE_BREAK | FOSSIL_FRAMING_ERROR)));
 					
+					// if DMX count even then line break zero byte received, move bytes left 1 byte
+					if (!(count & 1))
+					{
+						count--;
+						bcopy(dmxudp + 1, dmxudp, count); 
+					}
 					if (!(status4 & (FOSSIL_LINE_BREAK | FOSSIL_FRAMING_ERROR)))
 					{
-						dmxdata2[0] = (count - 2) >> 8;
-						dmxdata2[1] = (count - 2);
-						sendto(sockfd, artnet, DATA_OFFSET + count - 2, 0, (const struct sockaddr *) &servaddr, &error);
+						dmxsize[0] = (count - OFFS) >> 8;
+						dmxsize[1] = (count - OFFS);
+						sendto(sockfd, artnet, DATA_OFFSET + count - OFFS, 0, (const struct sockaddr *) &servaddr, &error);
 					}
 				}
 				else
 				{
-					dmxdata2[0] = (count - 2) >> 8;
-					dmxdata2[1] = (count - 2);
-					sendto(sockfd, artnet, DATA_OFFSET + count - 2, 0, (const struct sockaddr *) &servaddr, &error);
+					dmxsize[0] = (count - OFFS) >> 8;
+					dmxsize[1] = (count - OFFS);
+					sendto(sockfd, artnet, DATA_OFFSET + count - OFFS, 0, (const struct sockaddr *) &servaddr, &error);
 				}
 			}
 		}
